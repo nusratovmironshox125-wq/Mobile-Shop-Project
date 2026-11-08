@@ -25,6 +25,15 @@ try {
     $env:DB_URL = 'jdbc:postgresql://127.0.0.1:55432/rms_test'
     $env:DB_USER = $env:DB_MIGRATION_USER = 'rms_test'
     $env:DB_PASSWORD = $env:DB_MIGRATION_PASSWORD = 'rms-test-placeholder'
+    $env:SPRING_PROFILES_ACTIVE = 'test'
+    $env:SPRING_APPLICATION_JSON = '{}'
+    $env:SPRING_DATASOURCE_URL = $env:DB_URL
+    $env:SPRING_DATASOURCE_USERNAME = $env:DB_USER
+    $env:SPRING_DATASOURCE_PASSWORD = $env:DB_PASSWORD
+    $env:SPRING_FLYWAY_URL = $env:DB_URL
+    $env:SPRING_FLYWAY_USER = $env:DB_USER
+    $env:SPRING_FLYWAY_PASSWORD = $env:DB_PASSWORD
+    $env:SPRING_FLYWAY_ENABLED = 'true'
     $env:OWNER_LOGIN = 'local-owner'
     $env:OWNER_NAME = 'Local QA Owner'
     $env:OWNER_PASSWORD = [Guid]::NewGuid().ToString('N')
@@ -39,6 +48,15 @@ try {
     if ($LASTEXITCODE) { throw 'Maven tests failed' }
     $java = Join-Path $env:JAVA_HOME 'bin\java.exe'
     $jar = 'target/Real_Mobil_Shop_Sayt-0.0.1-SNAPSHOT.jar'
+    $inspectionLog = Join-Path $testRoot 'db-inspect.log'
+    $probe = Start-Process -FilePath $java -ArgumentList @('-jar',$jar,'inspect-database') -PassThru -Wait -WindowStyle Hidden `
+        -RedirectStandardOutput $inspectionLog -RedirectStandardError (Join-Path $testRoot 'db-inspect-error.log')
+    $inspection = Get-Content -LiteralPath $inspectionLog -Raw
+    if ($probe.ExitCode -ne 1 -or $inspection -notmatch 'database=rms_test schema=public user=rms_test host=127.0.0.1 port=55432 readOnly=true' `
+        -or $inspection -notmatch 'AT-26: DataSource does not match the owner local PostgreSQL') {
+        throw 'Expected the JPA inspection to report the isolated database and reject it as the owner database'
+    }
+    Write-Host 'PASS: JPA read-only inspection identifies and rejects the isolated database as the owner database'
     & $java -jar $jar bootstrap-owner
     if ($LASTEXITCODE) { throw 'Bootstrap failed' }
     $app = Start-Process -FilePath $java -ArgumentList @('-jar',$jar) -PassThru -WindowStyle Hidden `
@@ -59,7 +77,10 @@ try {
         if ($LASTEXITCODE) { throw 'Browser checks failed' }
     }
 } finally {
-    if ($app -and -not $app.HasExited) { Stop-Process -Id $app.Id }
+    if ($app -and -not $app.HasExited) {
+        Stop-Process -Id $app.Id
+        [void]$app.WaitForExit(5000)
+    }
     if ($databaseStarted) {
         & (Join-Path $PostgresBin 'pg_ctl.exe') -D $cluster -m fast -w stop
     }

@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
     "spring.datasource.url=jdbc:postgresql://127.0.0.1:55432/rms_test",
     "spring.datasource.username=rms_test",
     "spring.datasource.password=rms-test-placeholder",
+    "spring.flyway.url=jdbc:postgresql://127.0.0.1:55432/rms_test",
     "spring.flyway.user=rms_test",
     "spring.flyway.password=rms-test-placeholder",
     "shop.telegram.token=",
