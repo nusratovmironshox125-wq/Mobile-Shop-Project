@@ -193,7 +193,7 @@ public class Catalog {
               order by (i.variant_id is not null) desc, i.id limit 1) image
             from matches where position=1 order by %s limit :take offset :skip
             """.formatted(ACTIVE_SALE, PUBLIC, category != null ? "and c.slug=:category" : "",
-                searchPattern != null ? "and (p.brand || ' ' || p.name) collate \"PG_UNICODE_FAST\" ilike :search escape '!'" : "",
+                searchPattern != null ? "and (p.brand || ' ' || p.name) collate pg_catalog.pg_unicode_fast ilike :search escape '!'" : "",
                 ids != null ? "and p.id in (:ids)" : "", hasPriceFilter ? "and stock='IN_STOCK'" : "",
                 min != null ? "and price >= :min" : "", max != null ? "and price <= :max" : "",
                 discounted ? "and price < base_price" : "", order);
