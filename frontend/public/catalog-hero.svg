@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 320" fill="none">
+  <defs>
+    <linearGradient id="screen" x2="1" y2="1"><stop stop-color="#9ef6c9"/><stop offset=".47" stop-color="#397965"/><stop offset="1" stop-color="#132c29"/></linearGradient>
+    <linearGradient id="phone" x2="1" y2="1"><stop stop-color="#b8dacf"/><stop offset="1" stop-color="#617e76"/></linearGradient>
+    <linearGradient id="glass" x2="1" y2="1"><stop stop-color="#142a26"/><stop offset="1" stop-color="#6fb6a0"/></linearGradient>
+  </defs>
+  <circle cx="330" cy="165" r="151" stroke="#79c7a7" stroke-opacity=".23"/>
+  <circle cx="330" cy="165" r="115" stroke="#79c7a7" stroke-opacity=".21"/>
+  <circle cx="330" cy="165" r="79" stroke="#79c7a7" stroke-opacity=".2"/>
+  <path d="M454 72h20m-10-10v20M97 85h16m-8-8v16m389 124h12m-6-6v12" stroke="#a4e5ca" stroke-opacity=".7" stroke-linecap="round"/>
+  <g transform="translate(164 62) rotate(-10 145 105)">
+    <rect x="22" width="276" height="183" rx="13" fill="#172f2a" stroke="#93b7ab" stroke-width="2"/>
+    <rect x="31" y="9" width="258" height="164" rx="7" fill="url(#glass)"/>
+    <path d="M31 145c68-52 127-3 176-89 24-40 55-48 82-44v48c-53-7-64 43-95 72-41 39-106 27-151 41H31z" fill="#b7fae0" opacity=".36"/>
+    <path d="M31 159c93-33 129 3 172-50 32-40 49-54 86-43v45c-54-22-71 33-116 51-29 12-102 10-142 11z" fill="#53b191" opacity=".8"/>
+    <circle cx="160" cy="4.5" r="1.4" fill="#aec6bd"/>
+    <path d="M2 184h317c3 0 3 4 0 5l-24 7H26l-24-7c-3-1-3-5 0-5Z" fill="#a5beb6"/>
+    <path d="M137 184h47l-4 5h-39z" fill="#667e77"/>
+  </g>
+  <g transform="translate(101 88) rotate(14 56 110)">
+    <rect x="4" y="7" width="112" height="212" rx="24" fill="#142a26"/>
+    <rect width="112" height="212" rx="24" fill="url(#phone)" stroke="#ccf1e3" stroke-width="2"/>
+    <rect x="5" y="5" width="102" height="202" rx="20" fill="url(#screen)" stroke="#172b25" stroke-width="3"/>
+    <path d="M7 165c32-62 61-31 98-109v50c-23 62-68 28-93 89l-5-14z" fill="#a0f0c8" opacity=".7"/>
+    <path d="M9 180c35-70 60-39 97-97v53c-39 46-72 22-87 67-5-3-7-8-10-14z" fill="#144d40" opacity=".72"/>
+    <rect x="40" y="12" width="32" height="8" rx="4" fill="#142a26"/>
+  </g>
+</svg>
