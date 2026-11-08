@@ -48,7 +48,7 @@ Spring читает окружение процесса. Шаблон `.env.exam
 
 ## Проверка рабочей базы владельцем (AT-26)
 
-В IntelliJ выберите профиль `local` и задайте `DB_PASSWORD` в локальной Run Configuration. Для PowerShell используйте окружение текущего процесса. Профиль задаёт `jdbc:postgresql://localhost:5432/real_mobil_shop_sayt?currentSchema=public` и пользователя `postgres`.
+В IntelliJ выберите конфигурацию **Real Mobil Shop (local)**. Она включает профиль `local`. Для пароля создайте личную копию конфигурации без опции **Store as project file** и задайте `DB_PASSWORD` в **Environment variables**. Для PowerShell используйте окружение текущего процесса. Профиль задаёт `jdbc:postgresql://localhost:5432/real_mobil_shop_sayt?currentSchema=public` и пользователя `postgres`.
 
 ```powershell
 $env:DB_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host 'Пароль PostgreSQL' -AsSecureString)).Password

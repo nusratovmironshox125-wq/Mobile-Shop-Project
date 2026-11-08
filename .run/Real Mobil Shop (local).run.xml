@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Real Mobil Shop (local)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="Real_Mobil_Shop_Sayt" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="sayt.RealMobilShopSaytApplication" />
+    <option name="VM_PARAMETERS" value="-Dspring.profiles.active=local" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
