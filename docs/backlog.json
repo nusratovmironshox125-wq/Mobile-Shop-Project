@@ -1,0 +1,302 @@
+[
+  {
+    "id": "B01",
+    "requirements": [
+      "M0"
+    ],
+    "result": "Обследовать проект и рабочую схему",
+    "dependencies": [],
+    "status": "BLOCKED",
+    "acceptance": "Инвентаризация Git, JDK и схемы без изменений данных",
+    "commit": null,
+    "evidence": "Рабочая БД требует роль чтения"
+  },
+  {
+    "id": "B02",
+    "requirements": [
+      "M1",
+      "M2"
+    ],
+    "result": "Зафиксировать архитектурные решения",
+    "dependencies": [
+      "B01"
+    ],
+    "status": "DONE",
+    "acceptance": "Стек, сессии, SEO, один магазин, уведомления описаны",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "docs/DECISIONS.md"
+  },
+  {
+    "id": "B03",
+    "requirements": [
+      "UX-01",
+      "UX-02"
+    ],
+    "result": "Сделать адаптивную витрину и панель",
+    "dependencies": [
+      "B02"
+    ],
+    "status": "REVIEW",
+    "acceptance": "Мобильный и desktop сценарии проходят в поддерживаемых браузерах",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "Edge headless, полная матрица устройств открыта"
+  },
+  {
+    "id": "B04",
+    "requirements": [
+      "M2",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03"
+    ],
+    "result": "Описать API, ERD и угрозы",
+    "dependencies": [
+      "B02"
+    ],
+    "status": "DONE",
+    "acceptance": "OpenAPI разбирается и ссылки схем разрешаются",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "docs/ARCHITECTURE.md; docs/openapi.yaml; docs/THREAT_MODEL.md"
+  },
+  {
+    "id": "B05",
+    "requirements": [
+      "M3",
+      "OPS-01"
+    ],
+    "result": "Подготовить миграцию, bootstrap и CI",
+    "dependencies": [
+      "B04"
+    ],
+    "status": "REVIEW",
+    "acceptance": "Чистая PostgreSQL проходит Flyway/Hibernate; CI воспроизводит сборку",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "Локально проверено; GitHub Actions ждёт подключения репозитория"
+  },
+  {
+    "id": "B06",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "FR-14"
+    ],
+    "result": "Реализовать вход, CSRF и роли",
+    "dependencies": [
+      "B05"
+    ],
+    "status": "DONE",
+    "acceptance": "OWNER создаёт ADMIN, аноним и отключённая сессия получают отказ",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "scripts/check-api.mjs"
+  },
+  {
+    "id": "B07",
+    "requirements": [
+      "FR-03",
+      "FR-04",
+      "FR-07",
+      "SEC-03"
+    ],
+    "result": "Реализовать каталог, категории, варианты, фото",
+    "dependencies": [
+      "B04",
+      "B05",
+      "B06"
+    ],
+    "status": "DONE",
+    "acceptance": "Черновик становится публичным с фото и вариантом, архив и скрытая категория убираются из выдачи",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "scripts/check-api.mjs"
+  },
+  {
+    "id": "B08",
+    "requirements": [
+      "FR-05",
+      "FR-06",
+      "FR-07"
+    ],
+    "result": "Реализовать цену, скидки, наличие и рассрочку",
+    "dependencies": [
+      "B07"
+    ],
+    "status": "DONE",
+    "acceptance": "Начало включительно, конец исключительно, цена принадлежит выбранному варианту",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "PricingTests; scripts/check-api.mjs"
+  },
+  {
+    "id": "B09",
+    "requirements": [
+      "FR-02"
+    ],
+    "result": "Реализовать поиск, фильтр и сортировку",
+    "dependencies": [
+      "B07",
+      "B08"
+    ],
+    "status": "DONE",
+    "acceptance": "Регистронезависимый поиск и фильтр возвращают правильный вариант",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "scripts/check-api.mjs; scripts/check-browser.mjs"
+  },
+  {
+    "id": "B10",
+    "requirements": [
+      "FR-07",
+      "FR-08"
+    ],
+    "result": "Подключить витрину, карточку и избранное",
+    "dependencies": [
+      "B03",
+      "B09"
+    ],
+    "status": "DONE",
+    "acceptance": "Карточка открывается по прямому URL, избранное переживает reload",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "scripts/check-browser.mjs"
+  },
+  {
+    "id": "B11",
+    "requirements": [
+      "FR-01",
+      "FR-09",
+      "FR-10"
+    ],
+    "result": "Реализовать контакты, темы и RU/UZ",
+    "dependencies": [
+      "B03",
+      "B05"
+    ],
+    "status": "REVIEW",
+    "acceptance": "Настройки обновляются, переключение темы и языка сохраняет форму",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "Локальные проверки; магазин заполняет реальные контакты"
+  },
+  {
+    "id": "B12",
+    "requirements": [
+      "FR-11",
+      "FR-12"
+    ],
+    "result": "Реализовать заявку и обработку",
+    "dependencies": [
+      "B06",
+      "B07",
+      "B08",
+      "B09",
+      "B10"
+    ],
+    "status": "DONE",
+    "acceptance": "Повтор ключа даёт один лид, снимок и история видны в панели",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "scripts/check-api.mjs; scripts/check-browser.mjs"
+  },
+  {
+    "id": "B13",
+    "requirements": [
+      "FR-13"
+    ],
+    "result": "Реализовать outbox и Telegram",
+    "dependencies": [
+      "B12"
+    ],
+    "status": "REVIEW",
+    "acceptance": "Запись переживает отказ и истечение аренды; реальная доставка проверяется отдельно",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "OutboxTests; нужен подтверждённый тестовый получатель"
+  },
+  {
+    "id": "B14",
+    "requirements": [
+      "FR-15",
+      "SEC-03",
+      "SEC-05",
+      "DOS-02",
+      "DOS-03"
+    ],
+    "result": "Добавить аудит, приватность, лимиты и медиа-защиту",
+    "dependencies": [
+      "B06",
+      "B07",
+      "B08",
+      "B09",
+      "B10",
+      "B11",
+      "B12",
+      "B13"
+    ],
+    "status": "REVIEW",
+    "acceptance": "PII защищены, большие запросы ограничены, нормальный трафик за NAT проходит",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "Локальные негативные проверки; NAT и аудит инфраструктуры открыты"
+  },
+  {
+    "id": "B15",
+    "requirements": [
+      "AT-01..AT-25"
+    ],
+    "result": "Провести проверки приложения",
+    "dependencies": [
+      "B06",
+      "B07",
+      "B08",
+      "B09",
+      "B10",
+      "B11",
+      "B12",
+      "B13",
+      "B14"
+    ],
+    "status": "REVIEW",
+    "acceptance": "Выполнить полную применимую матрицу тестов",
+    "commit": "b02980d36bf87e558d6d541e98506737b7b99c80",
+    "evidence": "docs/ACCEPTANCE.md"
+  },
+  {
+    "id": "B16",
+    "requirements": [
+      "PERF-01..PERF-05"
+    ],
+    "result": "Выполнить нагрузочные прогоны",
+    "dependencies": [
+      "B15"
+    ],
+    "status": "BLOCKED",
+    "acceptance": "1 000/2 000 посетителей, 200 RPS и предел выше 2 000 измерены",
+    "commit": null,
+    "evidence": "Нужен изолированный стенд и генератор"
+  },
+  {
+    "id": "B17",
+    "requirements": [
+      "DOS-01",
+      "OPS-01",
+      "OPS-02"
+    ],
+    "result": "Настроить staging, TLS, CDN/WAF и мониторинг",
+    "dependencies": [
+      "B05",
+      "B14"
+    ],
+    "status": "BLOCKED",
+    "acceptance": "Внешний вход защищён, прямой origin закрыт",
+    "commit": null,
+    "evidence": "Нужны домен и инфраструктура"
+  },
+  {
+    "id": "B18",
+    "requirements": [
+      "OPS-03",
+      "OPS-04"
+    ],
+    "result": "Проверить backup, восстановление и выпуск",
+    "dependencies": [
+      "B16",
+      "B17"
+    ],
+    "status": "BLOCKED",
+    "acceptance": "Измерены RPO/RTO, репетиция отката пройдена",
+    "commit": null,
+    "evidence": "Нужны staging и согласованные резервные копии"
+  }
+]
