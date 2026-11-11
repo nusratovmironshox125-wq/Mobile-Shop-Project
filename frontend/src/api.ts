@@ -19,11 +19,11 @@ export type Variant = {
   screen: string | null; cpu: string | null; gpu: string | null; cameras: string | null; battery: string | null
   sim: string | null; os: string | null; weight: string | null; notes: string | null
   price: number; originalPrice: number | null; stock: string; installment: boolean
-  installmentTerms: string | null; version: number; salePrice: number | null; saleFrom: string | null; saleUntil: string | null
+  installmentTerms: string | null; version: number; salePrice: number | null; saleFrom: string | null; saleUntil: string | null; storageType: string | null; specsReviewRequired: boolean
 }
-export type Detail = { product: Product; images: Image[]; variants: Variant[] }
-export type Result<T> = { items: T[]; hasNext: boolean }
-export type Page<T> = { content: T[]; totalPages: number }
+export type Detail = { product: Product; images: Image[]; variants: Variant[]; kind: string }
+export type Result<T> = { items: T[]; hasNext: boolean; page: number; size: number; totalElements: number; totalPages: number }
+export type Page<T> = { content: T[]; totalPages: number; totalElements: number; size: number; number: number }
 export type Account = { id: number; name: string; login: string; role: string; enabled: boolean; mustChange: boolean; version: number; createdAt: string; lastLogin: string | null }
 
 export class ApiError extends Error {

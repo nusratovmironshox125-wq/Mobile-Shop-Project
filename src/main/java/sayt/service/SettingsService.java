@@ -34,6 +34,7 @@ public class SettingsService {
     public ShopSettingsResponse update(ShopSettingsEdit edit, long actor) {
         var settings = repository.findById(1L).orElseThrow();
         Problem.version(edit.version(), settings.getVersion());
+        var before=SettingsMapper.view(settings,privacyVersion,privacyRu,privacyUz);
         settings.setName(edit.name().strip());
         settings.setPhone(clean(edit.phone()));
         if (settings.getPhone() != null && !settings.getPhone().matches("\\+[1-9][0-9 ()-]{6,26}[0-9]")) {
@@ -50,7 +51,7 @@ public class SettingsService {
         settings.setMapUrl(map(clean(edit.mapUrl())));
         settings.setHours(clean(edit.hours()));
         repository.flush();
-        audit.record(actor, "SETTINGS_CHANGED", "settings:1");
+        audit.change(actor, "SETTINGS_CHANGED", "settings:1", settings.getName(), before, SettingsMapper.view(settings,privacyVersion,privacyRu,privacyUz));
         return SettingsMapper.view(settings, privacyVersion, privacyRu, privacyUz);
     }
 

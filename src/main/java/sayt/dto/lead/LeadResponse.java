@@ -9,4 +9,4 @@ public record LeadResponse(long id, UUID number, String name, String phone, long
     String sku, String variantLabel, BigDecimal price, BigDecimal originalPrice, String currency,
     boolean installment, String installmentTerms, String status, String comment, String privacyVersion,
     OffsetDateTime createdAt, OffsetDateTime closedAt, OffsetDateTime anonymizedAt, boolean retentionReview,
-    long version) {}
+    long version, OffsetDateTime readAt) {}

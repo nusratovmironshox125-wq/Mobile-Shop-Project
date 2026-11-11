@@ -27,6 +27,6 @@ public final class CatalogMapper {
         return new VariantView(v.getId(), v.getSku(), v.getColor(), v.getRamGb(), v.getStorageGb(), v.getScreen(), v.getCpu(), v.getGpu(), v.getCameras(),
             v.getBattery(), v.getSim(), v.getOs(), v.getWeight(), v.getNotes(), active ? v.getSalePrice() : v.getPrice(), active ? v.getPrice() : null,
             v.getStock(), v.isInstallment(), v.getInstallmentTerms(), v.getVersion(), admin ? v.getSalePrice() : null,
-            admin ? v.getSaleFrom() : null, admin ? v.getSaleUntil() : null);
+            admin ? v.getSaleFrom() : null, admin ? v.getSaleUntil() : null, v.getStorageType(), v.isSpecsReviewRequired());
     }
 }

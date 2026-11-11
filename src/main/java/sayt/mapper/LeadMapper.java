@@ -18,6 +18,6 @@ public final class LeadMapper {
             row.getString("installment_terms"), row.getString("status"), row.getString("comment"),
             row.getString("privacy_version"), created, closed, anonymized,
             closed == null && anonymized == null && created.isBefore(cutoff),
-            row.getLong("version"));
+            row.getLong("version"), row.getObject("read_at", OffsetDateTime.class));
     }
 }

@@ -23,16 +23,19 @@ public class CatalogService {
     private final VariantRepository variants;
     private final ProductImageRepository images;
     private final Clock clock;
+    private final CategoryRepository categories;
 
     CatalogService(CatalogQueryRepository queries, ProductRepository products, VariantRepository variants,
-                   ProductImageRepository images, Clock clock) {
+                   ProductImageRepository images, Clock clock, CategoryRepository categories) {
         this.queries = queries;
         this.products = products;
         this.variants = variants;
         this.images = images;
         this.clock = clock;
+        this.categories = categories;
     }
 
+    @Transactional(readOnly=true, isolation=Isolation.REPEATABLE_READ)
     public Result list(String category, String search, BigDecimal min, BigDecimal max, boolean discounted, String sort,
                        int page, int size, Collection<Long> ids) {
         if (min != null && max != null && min.compareTo(max) > 0) throw Problem.bad("PRICE_RANGE");
@@ -70,6 +73,6 @@ public class CatalogService {
         var now = clock.instant();
         return new Detail(CatalogMapper.productView(p), variants.findByProductIdOrderById(p.getId()).stream()
             .map(v -> CatalogMapper.variantView(v, PricingService.activeSale(v, now), admin)).toList(),
-            images.findByProductIdOrderById(p.getId()).stream().map(CatalogMapper::imageView).toList());
+            images.findByProductIdOrderById(p.getId()).stream().map(CatalogMapper::imageView).toList(), categories.findById(p.getCategoryId()).orElseThrow().getKind());
     }
 }

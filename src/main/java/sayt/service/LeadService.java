@@ -84,12 +84,13 @@ public class LeadService {
         return new LeadReceipt(number);
     }
 
-    public LeadListResponse list(String status, String query, LocalDate from, LocalDate until, int page) {
+    @Transactional(readOnly=true, isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public LeadListResponse list(String status, String query, LocalDate from, LocalDate until, int page, long actor) {
         var zone = ZoneId.of("Asia/Tashkent");
         if (from != null && until != null && from.isAfter(until)) throw Problem.bad("DATE_RANGE");
         return repository.list(status, query,
             from == null ? null : from.atStartOfDay(zone).toOffsetDateTime(),
-            until == null ? null : until.plusDays(1).atStartOfDay(zone).toOffsetDateTime(), page, cutoff());
+            until == null ? null : until.plusDays(1).atStartOfDay(zone).toOffsetDateTime(), page, cutoff(), actor);
     }
 
     public LeadDetailResponse detail(long id) { return new LeadDetailResponse(get(id), repository.history(id)); }
@@ -119,7 +120,7 @@ public class LeadService {
         int updated = repository.update(id, previous.version(), input.status(), input.comment(), closed);
         if (updated != 1) throw Problem.conflict("VERSION_CONFLICT");
         repository.addHistory(id, actor, previous.status(), input.status(), input.reason());
-        audit.record(actor, changesStatus ? "LEAD_STATUS_" + input.status() : "LEAD_COMMENT_CHANGED", "lead:" + id);
+        audit.status(actor, changesStatus ? "LEAD_STATUS_" + input.status() : "LEAD_COMMENT_CHANGED", "lead:" + id, previous.sku(), previous.status(), input.status());
         return detail(id);
     }
 

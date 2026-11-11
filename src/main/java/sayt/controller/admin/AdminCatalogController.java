@@ -29,6 +29,9 @@ class AdminCatalogController {
     @GetMapping("/admin/categories")
     List<CategoryView> adminCategories() { return categories.categories(true); }
 
+    @GetMapping("/admin/categories/page")
+    Page<CategoryView> categoryPage(@RequestParam(defaultValue="0") @Min(0) @Max(10000) int page) { return categories.page(page); }
+
     @PostMapping("/admin/categories")
     @ResponseStatus(HttpStatus.CREATED)
     CategoryView createCategory(@Valid @RequestBody CategoryEdit input,
@@ -43,8 +46,9 @@ class AdminCatalogController {
     }
 
     @GetMapping("/admin/products")
-    Page<ProductView> adminProducts(@RequestParam(defaultValue="0") @Min(0) @Max(10000) int page) {
-        return products.adminProducts(page);
+    Page<ProductView> adminProducts(@RequestParam(defaultValue="0") @Min(0) @Max(10000) int page,
+        @RequestParam(required=false) @Size(max=100) String q) {
+        return products.adminProducts(page, q);
     }
 
     @GetMapping("/admin/products/{id}")

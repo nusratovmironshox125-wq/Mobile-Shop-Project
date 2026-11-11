@@ -55,7 +55,7 @@ public class AccountService implements UserDetailsService {
     }
 
     public Page<AdminResponse> list(int page) {
-        return users.findAll(PageRequest.of(page, 24, Sort.by("id"))).map(AdminMapper::view);
+        return users.findAll(PageRequest.of(page, 10, Sort.by("id"))).map(AdminMapper::view);
     }
 
     @Transactional
@@ -66,7 +66,7 @@ public class AccountService implements UserDetailsService {
         user.setRole("ADMIN");
         String temporary = issue(user);
         users.saveAndFlush(user);
-        audit.record(actor, "ADMIN_CREATED", "account:" + user.getId());
+        audit.change(actor, "ADMIN_CREATED", "account:" + user.getId(), user.getLogin(), null, AdminMapper.view(user));
         return new IssuedPasswordResponse(AdminMapper.view(user), temporary);
     }
 
@@ -74,10 +74,11 @@ public class AccountService implements UserDetailsService {
     public AdminResponse update(long id, UpdateAdminRequest input, long actor) {
         var user = admin(id);
         Problem.version(input.version(), user.getVersion());
+        var before=AdminMapper.view(user);
         if (user.isEnabled() != input.enabled()) {
             user.setEnabled(input.enabled());
             user.setAuthVersion(user.getAuthVersion() + 1);
-            audit.record(actor, user.isEnabled() ? "ADMIN_ENABLED" : "ADMIN_DISABLED", "account:" + id);
+            audit.change(actor, user.isEnabled() ? "ADMIN_ENABLED" : "ADMIN_DISABLED", "account:" + id, user.getLogin(), before, AdminMapper.view(user));
         }
         return AdminMapper.view(users.saveAndFlush(user));
     }

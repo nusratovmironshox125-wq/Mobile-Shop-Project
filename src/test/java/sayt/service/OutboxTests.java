@@ -76,6 +76,33 @@ class OutboxTests {
             .param(receipt.number()).query(Boolean.class).single());
     }
 
+    @Test
+    void committedOutboxDeliversOutsideTheDatabaseTransaction() {
+        String tag=UUID.randomUUID().toString();
+        long product=db.sql("insert into product(category_id,brand,name,slug,status) select id,'QA','Committed',?,'PUBLISHED' from category where kind='PHONE' returning id").param(tag).query(Long.class).single();
+        long variant=db.sql("insert into product_variant(product_id,sku,stock,price) values (?,?,'IN_STOCK',1000000) returning id").params(product,tag).query(Long.class).single();
+        when(channel.enabled()).thenReturn(true);
+        when(channel.send(any())).thenAnswer(invocation->{
+            assertFalse(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive());
+            return new NotificationChannel.Delivery(true,null,0);
+        });
+        var receipt=leads.create(new CreateLeadRequest("Test Commit","+998901234569",variant,new BigDecimal("1000000"),"test-v1",true),UUID.randomUUID(),tag,"commit-test");
+        long id=db.sql("select id from lead where public_number=?").param(receipt.number()).query(Long.class).single();
+        org.springframework.test.context.transaction.TestTransaction.flagForCommit();
+        org.springframework.test.context.transaction.TestTransaction.end();
+        try {
+            var restarted=new NotificationService(repository,audit,channel);
+            restarted.drain();
+            assertEquals("SENT",db.sql("select status from notification_outbox where lead_id=?").param(id).query(String.class).single());
+            verify(channel).send(argThat(message->message.number().equals(receipt.number())));
+        } finally {
+            db.sql("delete from notification_outbox where lead_id=?").param(id).update();
+            db.sql("delete from lead where id=?").param(id).update();
+            db.sql("delete from product_variant where id=?").param(variant).update();
+            db.sql("delete from product where id=?").param(product).update();
+        }
+    }
+
     private String status(long id) {
         return db.sql("select status from notification_outbox where id=?").param(id).query(String.class).single();
     }

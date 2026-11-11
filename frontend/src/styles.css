@@ -187,3 +187,12 @@ del { color: var(--muted); font-size: .85rem; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; }
 }
+
+/* Lead visibility and compact pagination. */
+.admin-row.unread { border-left: 4px solid var(--accent, #268363); background: var(--surface, transparent); }
+.lead-toast { position: fixed; z-index: 50; right: 1rem; bottom: 1rem; width: min(26rem, calc(100vw - 2rem)); box-shadow: 0 12px 40px #0003; overflow-wrap: anywhere; }
+.lead-toast .button { margin: .25rem; }
+.page-range { display:block; white-space:nowrap; }
+.pager { flex-wrap:wrap; gap:.5rem; }
+.admin-row { overflow-wrap:anywhere; }
+.field select { max-width:100%; }

@@ -43,7 +43,7 @@ class CatalogController {
         @RequestParam(defaultValue="false") boolean discounted,
         @RequestParam(defaultValue="new") @Size(max=12) String sort,
         @RequestParam(defaultValue="0") @Min(0) @Max(10000) int page,
-        @RequestParam(defaultValue="24") @Min(1) @Max(48) int size, HttpServletRequest request) {
+        @RequestParam(defaultValue="10") int size, HttpServletRequest request) {
         if (q != null && !q.isBlank()) {
             String source = request.getRemoteAddr();
             limits.acquire("search:" + source, searchLimit, Duration.ofMinutes(1));
@@ -53,7 +53,7 @@ class CatalogController {
                 limits.acquire("search-burst:" + source + ":" + marker, clientBurst, Duration.ofSeconds(3));
             }
         }
-        return catalog.list(category, q, minPrice, maxPrice, discounted, sort, page, size, null);
+        return catalog.list(category, q, minPrice, maxPrice, discounted, sort, page, 10, null);
     }
 
     @GetMapping("/products/by-ids")

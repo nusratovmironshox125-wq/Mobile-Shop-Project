@@ -98,7 +98,7 @@ const anonymous = await visitor.call('/api/v1/products', { raw: true })
 assert.equal(anonymous.headers.get('Set-Cookie'), null)
 await visitor.call('/admin/leads', { status: 401 })
 await visitor.call('/leads', { method: 'POST', body: {}, status: 403 })
-await visitor.call('/products?size=49', { status: 400 })
+assert.equal((await visitor.call('/products?size=49')).size, 10)
 await visitor.call('/products?minPrice=10&maxPrice=5', { status: 400 })
 
 await owner.login(ownerLogin, ownerPassword)
@@ -173,7 +173,7 @@ await visitor.write('/leads', 'POST', { ...input, phone: '+998901234567' }, 409,
 const list = await owner.call('/admin/leads?q=' + one.number)
 assert.equal(list.items.length, 1)
 const lead = list.items[0]
-assert.equal(lead.sku, first.input.sku)
+assert.equal(lead.sku, first.input.sku.toUpperCase())
 assert.equal(lead.price, 2700000)
 assert.equal(lead.phone, '+998901234567')
 assert.equal(lead.originalPrice, 2800000)
@@ -203,6 +203,57 @@ await employee.write('/auth/change-password', 'POST', { currentPassword: user.te
 await employee.login(login, newPassword)
 await employee.call('/admin/leads')
 await employee.write('/admin/users', 'POST', { login: 'forbidden', name: 'Тест' }, 403)
+// FIX regressions: server read receipts, CSRF, immutable snapshots and DTO rules.
+await employee.call('/admin/audit', { status: 403 })
+await visitor.call('/admin/leads/updates', { status: 401 })
+const ownerUnread = (await owner.call('/admin/leads/updates')).unreadCount
+const employeeUnread = (await employee.call('/admin/leads/updates')).unreadCount
+assert.equal(ownerUnread, employeeUnread)
+await owner.call('/admin/leads/' + lead.id)
+assert.equal((await owner.call('/admin/leads/updates')).unreadCount, ownerUnread)
+await owner.call('/admin/leads/' + lead.id + '/read', {method:'POST',status:403})
+await owner.write('/admin/leads/' + lead.id + '/read', 'POST', undefined, 204)
+await owner.write('/admin/leads/' + lead.id + '/read', 'POST', undefined, 204)
+assert.equal((await owner.call('/admin/leads/updates')).unreadCount, ownerUnread-1)
+const otherUpdates = await employee.call('/admin/leads/updates')
+assert.equal(otherUpdates.unreadCount, employeeUnread)
+assert(!JSON.stringify(otherUpdates).includes('+998'))
+assert.equal((await owner.call('/admin/leads/' + lead.id)).lead.status, 'CONTACTED')
+assert((await owner.call('/admin/leads?q=' + lead.number)).items[0].readAt)
+assert.equal((await employee.call('/admin/leads?q=' + lead.number)).items[0].readAt, null)
+await owner.write(phoneProduct.path+'/variants','POST',{...first.input,sku:'BAD-GPU',gpu:'wrong'},400)
+await owner.write(laptopProduct.path+'/variants','POST',{...first.input,sku:'BAD-SIM',sim:'wrong'},400)
+await owner.write(phoneProduct.path+'/variants','POST',{...first.input,sku:'  '+first.input.sku.toUpperCase()+'  '},409)
+assert.equal((await owner.write(phoneProduct.path,'PATCH',{categoryId:laptops.id,brand:phoneProduct.published.brand,name:phoneProduct.published.name,status:phoneProduct.published.status,version:phoneProduct.published.version},400)).code,'PRODUCT_TYPE_IMMUTABLE')
+const match = await owner.call('/admin/products?q='+encodeURIComponent(first.input.sku.toLowerCase()))
+assert.equal(match.totalElements,1); assert.equal(match.content[0].id,phoneProduct.published.id)
+const initialVariant=(await owner.call(phoneProduct.path)).variants.find(v=>v.id===first.variant.id)
+const newVariant=await employee.write(phoneProduct.path+'/variants/'+first.variant.id,'PATCH',{...first.input,price:2900000,version:initialVariant.version})
+const auditDiff=await owner.call('/admin/audit?username='+login+'&object='+encodeURIComponent(newVariant.sku))
+assert.equal(auditDiff.totalElements,1)
+const event=auditDiff.items[0];assert.equal(event.actor_username,login);assert.equal(event.actor_id,user.account.id)
+assert.deepEqual(JSON.parse(event.changes).price,{before:2800000,after:2900000})
+const uniqueName='Boundary-'+suffix
+for(let n=0;n<=21;n++){
+ if(n) await owner.write('/admin/products','POST',{categoryId:phones.id,brand:'QA',name:uniqueName+n,status:'DRAFT'},201)
+ if([0,1,10,11,20,21].includes(n)){
+  for(let p=0;p<4;p++){const rows=await owner.call('/admin/products?q='+uniqueName+'&page='+p+'&size=99');assert.equal(rows.totalElements,n);assert.equal(rows.size,10);assert.equal(rows.content.length,Math.max(0,Math.min(10,n-p*10)));}
+ }
+}
+const noSlug=await owner.write('/admin/products','POST',{categoryId:phones.id,brand:'测试',name:'测试'},201)
+assert.equal(noSlug.slug,'product-'+noSlug.id)
+const renamed=await owner.write('/admin/products/'+noSlug.id,'PATCH',{categoryId:noSlug.categoryId,brand:noSlug.brand,name:'Rename',version:noSlug.version})
+assert.equal(renamed.slug,noSlug.slug)
+await visitor.call('/products/'+renamed.slug,{status:404})
+const concurrent=await Promise.all([1,2].map(()=>owner.write('/admin/products','POST',{categoryId:phones.id,brand:'Same',name:'Same'},201)))
+assert.notEqual(concurrent[0].slug,concurrent[1].slug)
+await owner.call('/admin/products?page=-1',{status:400})
+await owner.call('/admin/audit?page=no',{status:400})
+const catsPage=await owner.call('/admin/categories/page');assert.equal(catsPage.size,10)
+const failedAudit=await owner.call('/admin/audit?object='+encodeURIComponent('BAD-GPU'));assert.equal(failedAudit.totalElements,0)
+
+for(let n=0;n<121;n++) await employee.call('/admin/leads/updates',{status:n<118?200:429})
+assert.equal((await owner.call('/admin/leads/updates')).unreadCount,ownerUnread-1)
 const userList = await owner.call('/admin/users')
 const currentUser = userList.content.find(account => account.id === user.account.id)
 await owner.write('/admin/users/' + currentUser.id, 'PATCH', { enabled: false, version: currentUser.version })
@@ -214,6 +265,13 @@ await owner.write('/admin/leads/' + lead.id + '/anonymize', 'POST', undefined, 2
 const anonymized = await owner.call('/admin/leads/' + lead.id)
 assert.equal(anonymized.lead.phone, null)
 assert.equal(anonymized.lead.name, null)
-assert.equal(anonymized.lead.sku, first.input.sku)
+assert.equal(anonymized.lead.sku, first.input.sku.toUpperCase())
 
+// Enough leads to exercise page 3 and global unread counts in the browser.
+for(let n=0;n<20;n++){
+ const person=new Session()
+ await person.write('/leads','POST',{...input,name:'Page Test',phone:'+99891'+String(2000000+n)},201,{'Idempotency-Key':randomUUID()})
+}
+const leadPages=await owner.call('/admin/leads?page=2')
+assert.equal(leadPages.size,10);assert.equal(leadPages.totalElements,21);assert.equal(leadPages.items.length,1)
 console.log('PASS: ' + checks + ' HTTP checks on isolated PostgreSQL')

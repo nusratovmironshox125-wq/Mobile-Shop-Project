@@ -9,6 +9,13 @@ export const money = (amount: number, lang: Lang) => new Intl.NumberFormat(lang 
   { maximumFractionDigits: 2 }).format(amount) + (lang === 'uz' ? ' so‘m' : ' сум')
 
 const errors: Record<string, [string, string]> = {
+  CATEGORY_SPEC_MISMATCH: ['Характеристики не соответствуют типу категории.', 'Xususiyatlar toifa turiga mos emas.'],
+  PRODUCT_TYPE_IMMUTABLE: ['У товара есть комплектации. Прямая смена типа техники запрещена.', 'Mahsulotda variantlar bor. Texnika turini bevosita o‘zgartirish mumkin emas.'],
+  CATEGORY_TYPE_IMMUTABLE: ['Тип существующей категории менять нельзя.', 'Mavjud toifa turini o‘zgartirib bo‘lmaydi.'],
+  CATEGORY_TYPE_REQUIRED: ['Укажите тип категории PHONE или LAPTOP.', 'PHONE yoki LAPTOP toifa turini ko‘rsating.'],
+  SPECS_REVIEW_REQUIRED: ['Проверьте сохранённые несовместимые поля и подтвердите очистку.', 'Mos kelmaydigan saqlangan maydonlarni tekshirib, tozalashni tasdiqlang.'],
+  SKU_IMMUTABLE: ['Сохранённый артикул нельзя менять.', 'Saqlangan artikulni o‘zgartirib bo‘lmaydi.'],
+  SKU_INVALID: ['Артикул содержит недопустимые символы.', 'Artikulda ruxsat etilmagan belgilar bor.'],
   NOT_FOUND: ['Страница или товар недоступны.', 'Sahifa yoki mahsulot mavjud emas.'],
   VALIDATION: ['Проверьте введённые данные.', 'Kiritilgan ma’lumotlarni tekshiring.'],
   PRICE_RANGE: ['Минимальная цена выше максимальной.', 'Minimal narx maksimal narxdan yuqori.'],

@@ -23,25 +23,37 @@ class TelegramNotificationChannelTests {
 
     @Test
     void disabledChannelDoesNotMakeHttpRequests() {
-        var channel = new TelegramNotificationChannel("", "", client);
+        var channel = new TelegramNotificationChannel("", "", client, tools.jackson.databind.json.JsonMapper.builder().build());
         assertFalse(channel.enabled());
         assertFalse(channel.send(message).sent());
         verifyNoInteractions(client);
     }
 
     @Test
+    void responseBodyIsBounded() {
+        var subscriber=new TelegramNotificationChannel.LimitedBody();
+        var subscription=mock(java.util.concurrent.Flow.Subscription.class);
+        subscriber.onSubscribe(subscription);
+        subscriber.onNext(List.of(java.nio.ByteBuffer.allocate(65537)));
+        verify(subscription).cancel();
+        assertTrue(subscriber.getBody().toCompletableFuture().isCompletedExceptionally());
+    }
+
+    @Test
     void successAndThrottlingFollowDeliveryContract() throws Exception {
         @SuppressWarnings("unchecked")
-        HttpResponse<Void> response = mock(HttpResponse.class);
-        when(client.send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<Void>>any()))
+        HttpResponse<String> response = mock(HttpResponse.class);
+        when(client.send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any()))
             .thenReturn(response);
-        when(response.statusCode()).thenReturn(200, 429);
+        when(response.statusCode()).thenReturn(200, 429, 200);
+        when(response.body()).thenReturn("{\"ok\":true}", "{\"ok\":false,\"parameters\":{\"retry_after\":180}}", "{\"ok\":false}");
         when(response.headers()).thenReturn(HttpHeaders.of(Map.of("Retry-After", List.of("120")), (k, v) -> true));
-        var channel = new TelegramNotificationChannel("1:test", "-100", client);
+        var channel = new TelegramNotificationChannel("1:test", "-100", client, tools.jackson.databind.json.JsonMapper.builder().build());
         assertTrue(channel.send(message).sent());
         var rejected = channel.send(message);
         assertFalse(rejected.sent());
         assertEquals("TELEGRAM_HTTP_429", rejected.error());
-        assertEquals(120, rejected.retryAfter());
+        assertEquals(180, rejected.retryAfter());
+        assertFalse(channel.send(message).sent());
     }
 }

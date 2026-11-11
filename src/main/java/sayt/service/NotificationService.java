@@ -22,7 +22,8 @@ public class NotificationService {
     }
 
     public NotificationQueueResponse list(int page) {
-        return new NotificationQueueResponse(channel.enabled(), repository.list(page));
+        long total=repository.count();
+        return new NotificationQueueResponse(channel.enabled(), repository.list(page),page,10,total,(int)((total+9)/10),(page+1L)*10<total);
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -59,7 +60,9 @@ public class NotificationService {
             repository.finish(job, "CANCELLED", 0, null);
             return;
         }
-        var result = channel.send(message.get());
+        NotificationChannel.Delivery result;
+        try { result = channel.send(message.get()); }
+        catch (RuntimeException failure) { result = new NotificationChannel.Delivery(false,"CHANNEL_UNAVAILABLE",0); }
         int attempts = job.attempts() + 1;
         if (result.sent()) repository.finish(job, "SENT", 0, null);
         else if (attempts > BACKOFF.length) repository.finish(job, "FAILED", 0, result.error());

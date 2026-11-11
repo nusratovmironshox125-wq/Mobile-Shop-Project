@@ -64,7 +64,16 @@ public class CatalogQueryRepository {
                 ids != null ? "and p.id in (:ids)" : "", hasPriceFilter ? "and stock='IN_STOCK'" : "",
                 min != null ? "and price >= :min" : "", max != null ? "and price <= :max" : "",
                 discounted ? "and price < base_price" : "", order);
-        var query = db.sql(sql).param("now", now).param("take", size + 1).param("skip", page * size);
+        String countSql = sql.substring(0,sql.indexOf("select matches.*")) + "select count(*) from matches where position=1";
+        var args = new HashMap<String,Object>();
+        args.put("now",now);
+        if(category != null) args.put("category",category);
+        if(searchPattern != null) args.put("search",searchPattern);
+        if(ids != null) args.put("ids",ids);
+        if(min != null) args.put("min",min);
+        if(max != null) args.put("max",max);
+        long total = db.sql(countSql).params(args).query(Long.class).single();
+        var query = db.sql(sql).param("now", now).param("take", size).param("skip", page * size);
         if (category != null) query.param("category", category);
         if (searchPattern != null) query.param("search", searchPattern);
         if (ids != null) query.param("ids", ids);
@@ -78,12 +87,12 @@ public class CatalogQueryRepository {
                 price.compareTo(base) < 0 ? base : null, row.getString("stock"), row.getBoolean("installment"),
                 CatalogMapper.mediaUrl(row.getString("image")), row.getLong("variant_count"));
         }).list();
-        return new Result(cards.subList(0, Math.min(size, cards.size())), cards.size() > size);
+        return new Result(cards, (page+1L)*size<total, page, size, total, (int)((total+size-1)/size));
     }
 
     public Optional<Selection> lockSelection(long id, OffsetDateTime now) {
         return db.sql("""
-            select p.id product_id, p.brand, p.name, v.sku, v.color, v.ram_gb, v.storage_gb,
+            select p.id product_id, p.brand, p.name, c.kind, v.sku, v.color, v.ram_gb, v.storage_gb, v.storage_type, v.cpu, v.gpu,
               v.price base_price, case when %s then v.sale_price else v.price end price,
               v.installment, v.installment_terms
             from product_variant v join product p on p.id=v.product_id join category c on c.id=p.category_id
@@ -91,9 +100,11 @@ public class CatalogQueryRepository {
             """.formatted(ACTIVE_SALE, PUBLIC)).param("id", id).param("now", now)
             .query((row, index) -> {
                 var labels = new ArrayList<String>();
-                if (row.getString("color") != null && !row.getString("color").isBlank()) labels.add(row.getString("color"));
-                if (row.getObject("ram_gb") != null) labels.add(row.getInt("ram_gb") + " GB RAM");
-                if (row.getObject("storage_gb") != null) labels.add(row.getInt("storage_gb") + " GB");
+                if (row.getString("color") != null && !row.getString("color").isBlank()) labels.add("Цвет / Rang: " + row.getString("color"));
+                if (row.getObject("ram_gb") != null) labels.add("Оперативная память / RAM: " + row.getInt("ram_gb") + " GB");
+                if (row.getObject("storage_gb") != null) labels.add(("LAPTOP".equals(row.getString("kind")) ? "Накопитель / Disk: " : "Встроенная память / Xotira: ") + (row.getString("storage_type") == null ? "" : row.getString("storage_type")+" ") + row.getInt("storage_gb") + " GB");
+                if(row.getString("cpu") != null && !row.getString("cpu").isBlank()) labels.add("Процессор / Protsessor: "+row.getString("cpu"));
+                if("LAPTOP".equals(row.getString("kind")) && row.getString("gpu") != null && !row.getString("gpu").isBlank()) labels.add("Видеокарта / GPU: "+row.getString("gpu"));
                 var price = row.getBigDecimal("price");
                 var base = row.getBigDecimal("base_price");
                 return new Selection(row.getLong("product_id"), id, row.getString("brand") + " " + row.getString("name"),

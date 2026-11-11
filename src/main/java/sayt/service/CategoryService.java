@@ -25,20 +25,29 @@ public class CategoryService {
             .map(CatalogMapper::categoryView).toList();
     }
 
+    public org.springframework.data.domain.Page<CategoryView> page(int page) {
+        return categories.findAll(org.springframework.data.domain.PageRequest.of(page,10,Sort.by("sortOrder","id"))).map(CatalogMapper::categoryView);
+    }
+
     @Transactional
     public CategoryView saveCategory(Long id, CategoryEdit input, long actor) {
         var c = id == null ? new Category() : categories.findById(id).orElseThrow(Problem::missing);
         if (id != null) {
             Problem.version(input.version(), c.getVersion());
             if (!c.getSlug().equals(input.slug()) && !"GENERAL".equals(c.getKind())) throw Problem.bad("SLUG_PROTECTED");
-        } else c.setKind("GENERAL");
+            if (input.kind() != null && !c.getKind().equals(input.kind())) throw Problem.bad("CATEGORY_TYPE_IMMUTABLE");
+        } else {
+            if (input.kind() == null) throw Problem.bad("CATEGORY_TYPE_REQUIRED");
+            c.setKind(input.kind());
+        }
+        var before = id == null ? null : CatalogMapper.categoryView(c);
         c.setSlug(input.slug());
         c.setNameRu(input.nameRu().strip());
         c.setNameUz(input.nameUz().strip());
         c.setEnabled(input.enabled());
         c.setSortOrder(input.sortOrder());
         categories.saveAndFlush(c);
-        audit.record(actor, "CATEGORY_SAVED", "category:" + c.getId());
+        audit.change(actor, "CATEGORY_SAVED", "category:" + c.getId(), c.getNameRu(), before, CatalogMapper.categoryView(c));
         return CatalogMapper.categoryView(c);
     }
 }

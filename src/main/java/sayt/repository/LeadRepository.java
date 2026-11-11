@@ -33,14 +33,22 @@ public class LeadRepository {
                 selected.installment(), selected.installmentTerms(), privacyVersion).query(Long.class).single();
     }
 
-    public LeadListResponse list(String status, String query, OffsetDateTime from, OffsetDateTime until, int page, OffsetDateTime cutoff) {
+    public LeadListResponse list(String status, String query, OffsetDateTime from, OffsetDateTime until, int page, OffsetDateTime cutoff, long actor) {
         String search = query == null ? "" : query.strip();
         var sql = """
-            select * from lead where true %s %s %s %s order by created_at desc,id desc limit 25 offset :skip
+            select l.*,r.read_at from lead l left join lead_read r on r.lead_id=l.id and r.admin_id=:actor where true %s %s %s %s order by created_at desc,id desc limit 10 offset :skip
             """.formatted(status == null ? "" : "and status=:status",
             search.isEmpty() ? "" : "and (cast(public_number as text) ilike :q escape '!' or sku ilike :q escape '!' or phone=:phone)",
             from == null ? "" : "and created_at >= :from", until == null ? "" : "and created_at < :until");
-        var stmt = db.sql(sql).param("skip", page * 24);
+        var countSql = sql.substring(sql.indexOf(" from "), sql.indexOf(" order by "));
+        var params = new java.util.HashMap<String,Object>();
+        params.put("actor",actor);
+        if(status != null) params.put("status",status);
+        if(!search.isEmpty()) { params.put("q","%" + search.replace("!","!!").replace("%","!%").replace("_","!_") + "%"); params.put("phone",search.replaceAll("[ ()-]","")); }
+        if(from != null) params.put("from",from);
+        if(until != null) params.put("until",until);
+        long total = db.sql("select count(*)"+countSql).params(params).query(Long.class).single();
+        var stmt = db.sql(sql).param("skip", page * 10).param("actor",actor);
         if (status != null) stmt.param("status", status);
         if (!search.isEmpty()) {
             stmt.param("q", "%" + search.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%")
@@ -49,15 +57,15 @@ public class LeadRepository {
         if (from != null) stmt.param("from", from);
         if (until != null) stmt.param("until", until);
         var items = stmt.query((row, index) -> LeadMapper.view(row, cutoff)).list();
-        return new LeadListResponse(items.subList(0, Math.min(24, items.size())), items.size() > 24);
+        return new LeadListResponse(items, (page+1L)*10 < total, page, 10, total, (int)((total+9)/10));
     }
 
     public Optional<LeadResponse> find(long id, OffsetDateTime cutoff) {
-        return db.sql("select * from lead where id=?").param(id).query((row, index) -> LeadMapper.view(row, cutoff)).optional();
+        return db.sql("select *,null::timestamptz read_at from lead where id=?").param(id).query((row, index) -> LeadMapper.view(row, cutoff)).optional();
     }
 
     public Optional<LeadResponse> lock(long id, OffsetDateTime cutoff) {
-        return db.sql("select * from lead where id=? for update").param(id).query((row, index) -> LeadMapper.view(row, cutoff)).optional();
+        return db.sql("select *,null::timestamptz read_at from lead where id=? for update").param(id).query((row, index) -> LeadMapper.view(row, cutoff)).optional();
     }
 
     public List<Map<String, Object>> history(long id) {

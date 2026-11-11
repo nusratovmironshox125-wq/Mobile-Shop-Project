@@ -17,9 +17,11 @@ public class OutboxRepository {
     public List<Map<String, Object>> list(int page) {
         return db.sql("""
             select id,lead_id,status,attempts,next_attempt,last_error from notification_outbox
-            order by (status='FAILED') desc,id desc limit 24 offset ?
-            """).param(page * 24).query().listOfRows();
+            order by (status='FAILED') desc,id desc limit 10 offset ?
+            """).param(page * 10).query().listOfRows();
     }
+
+    public long count() { return db.sql("select count(*) from notification_outbox").query(Long.class).single(); }
 
     public int retry(long id) {
         return db.sql("""

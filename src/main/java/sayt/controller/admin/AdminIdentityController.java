@@ -46,7 +46,12 @@ class AdminIdentityController {
     }
 
     @GetMapping("/admin/audit")
-    java.util.List<Map<String, Object>> audit(@RequestParam(defaultValue = "0") @Min(0) @Max(10000) int page) {
-        return audit.list(page);
+    sayt.dto.PageResult<Map<String, Object>> audit(@RequestParam(defaultValue = "0") @Min(0) @Max(10000) int page,
+        @RequestParam(required=false) @Size(max=60) String username,
+        @RequestParam(required=false) @Size(max=80) String action,
+        @RequestParam(required=false) @Size(max=120) String object,
+        @RequestParam(required=false) java.time.LocalDate from,
+        @RequestParam(required=false) java.time.LocalDate until) {
+        return audit.list(page,username,action,object,from,until);
     }
 }

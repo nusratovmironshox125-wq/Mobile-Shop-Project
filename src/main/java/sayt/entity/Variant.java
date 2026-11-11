@@ -13,6 +13,8 @@ import lombok.Setter;
 public class Variant extends CatalogRow {
     private Long productId;
     private String sku;
+    private String storageType;
+    private boolean specsReviewRequired;
     private String color;
     private Integer ramGb;
     private Integer storageGb;

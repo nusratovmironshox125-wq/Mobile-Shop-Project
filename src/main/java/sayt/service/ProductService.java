@@ -31,8 +31,8 @@ public class ProductService {
         this.clock = clock;
     }
 
-    public Page<ProductView> adminProducts(int page) {
-        return products.findAll(PageRequest.of(page, 24, Sort.by(Sort.Direction.DESC, "id")))
+    public Page<ProductView> adminProducts(int page, String query) {
+        return products.search(query == null ? "" : query.strip(), PageRequest.of(page, 10, Sort.by(Sort.Direction.DESC, "id")))
             .map(CatalogMapper::productView);
     }
 
@@ -47,30 +47,50 @@ public class ProductService {
         if (id != null && "DRAFT".equals(status) && !"DRAFT".equals(p.getStatus())) {
             throw Problem.bad("INVALID_PUBLICATION_STATUS");
         }
-        categories.findById(input.categoryId()).orElseThrow(Problem::missing);
+        var category = categories.findById(input.categoryId()).orElseThrow(Problem::missing);
+        if ("GENERAL".equals(category.getKind())) throw Problem.bad("CATEGORY_TYPE_REQUIRED");
+        if (id != null && variants.existsByProductId(id) && !categories.findById(p.getCategoryId()).orElseThrow().getKind().equals(category.getKind())) throw Problem.bad("PRODUCT_TYPE_IMMUTABLE");
+        var before = id == null ? null : CatalogMapper.productView(p);
         p.setCategoryId(input.categoryId());
         p.setBrand(input.brand().strip());
         p.setName(input.name().strip());
-        p.setSlug(input.slug());
+        if (id == null) {
+            String stem = (input.brand()+"-"+input.name()).toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+","-").replaceAll("^-|-$","");
+            if (stem.length() > 100) stem = stem.substring(0,100);
+            p.setSlug(input.slug() != null && !input.slug().isBlank() ? input.slug() : (stem.isEmpty() ? "product" : stem) + "-" + java.util.UUID.randomUUID());
+        }
         p.setDescription(input.description() == null ? "" : input.description().strip());
         p.setStatus(status);
         products.saveAndFlush(p);
-        audit.record(actor, "PRODUCT_" + status, "product:" + p.getId());
+        if (id == null && (input.slug() == null || input.slug().isBlank())) {
+            String stem=(p.getBrand()+"-"+p.getName()).toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+","-").replaceAll("^-|-$","");
+            if(stem.length()>100) stem=stem.substring(0,100);
+            p.setSlug((stem.isEmpty()?"product":stem)+"-"+p.getId());
+            products.flush();
+        }
+        audit.change(actor, "PRODUCT_" + status, "product:" + p.getId(), p.getBrand()+" "+p.getName(), before, CatalogMapper.productView(p));
         return CatalogMapper.productView(p);
     }
 
     @Transactional
     public VariantView saveVariant(long productId, Long id, VariantEdit in, long actor) {
-        product(productId);
+        products.lockStatus(productId).orElseThrow(Problem::missing);
+        var product = product(productId);
+        VariantRules.validate(categories.findById(product.getCategoryId()).orElseThrow().getKind(), in);
+        String sku = VariantRules.sku(in.sku());
         var v = id == null ? new Variant() : variants.findById(id)
             .filter(it -> it.getProductId() == productId).orElseThrow(Problem::missing);
         if (id != null) {
             Problem.version(in.version(), v.getVersion());
-            if (!v.getSku().equals(in.sku())) throw Problem.bad("SKU_IMMUTABLE");
+            if (!VariantRules.sku(v.getSku()).equals(sku)) throw Problem.bad("SKU_IMMUTABLE");
         }
+        if (v.isSpecsReviewRequired() && !Boolean.TRUE.equals(in.confirmSpecCleanup())) throw Problem.bad("SPECS_REVIEW_REQUIRED");
+        var before = id == null ? null : CatalogMapper.variantView(v, false, true);
         PricingService.validateDiscount(in);
         v.setProductId(productId);
-        v.setSku(in.sku());
+        if (id == null) v.setSku(sku);
+        v.setStorageType(in.storageType());
+        v.setSpecsReviewRequired(false);
         v.setColor(in.color());
         v.setRamGb(in.ramGb());
         v.setStorageGb(in.storageGb());
@@ -91,7 +111,7 @@ public class ProductService {
         v.setSaleFrom(in.saleFrom());
         v.setSaleUntil(in.saleUntil());
         variants.saveAndFlush(v);
-        audit.record(actor, "VARIANT_SAVED", "variant:" + v.getId());
+        audit.change(actor, "VARIANT_SAVED", "variant:" + v.getId(), v.getSku(), before, CatalogMapper.variantView(v, false, true));
         return CatalogMapper.variantView(v, PricingService.activeSale(v, clock.instant()), true);
     }
 

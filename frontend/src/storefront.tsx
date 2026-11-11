@@ -1,11 +1,12 @@
 import { createContext, lazy, Suspense, useContext, useEffect, useRef, useState } from 'react'
-import type { FormEvent, ReactNode } from 'react'
+import type { FormEvent } from 'react'
 import { Link, NavLink, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom'
-import { api, ApiError, label, mutate } from './api'
+import { api, ApiError, mutate } from './api'
 import type { Card, Category, Detail, Result, Settings, Variant } from './api'
 import { ErrorText, Locale, money, statusName, useLocale } from './locale'
 import type { Lang } from './locale'
 import { Brand, Empty, Icon, Loading } from './ui'
+import { specifications, variantLabel } from './specs'
 
 const Admin = lazy(() => import('./admin'))
 const searchMarker = globalThis.crypto?.randomUUID?.()
@@ -177,6 +178,7 @@ function CatalogPage({ discount = false }: { discount?: boolean }) {
     })
     return () => abort.abort()
   }, [params, category, discount])
+  useEffect(()=>{if(response && page>0 && page>=Math.max(1,response.totalPages)) setParams(previous=>{const next=new URLSearchParams(previous);next.set('page',String(Math.max(0,response.totalPages-1)));return next},{replace:true})},[response,page,setParams])
   function change(values: Record<string, string>) {
     setParams(previous => {
       const next = new URLSearchParams(previous)
@@ -229,7 +231,7 @@ function CatalogPage({ discount = false }: { discount?: boolean }) {
       </form>
       {error ? <ErrorText error={error}/> : response ? response.items.length > 0 ? <>
         <div className="grid">{response.items.map(item => <ProductCard item={item} key={item.id}/>)}</div>
-        <Pager page={page} next={response.hasNext} change={next => change({ page: String(next) })}/>
+        <Pager total={response.totalElements} page={page} next={response.hasNext} change={next => change({ page: String(next) })}/>
       </> : <Empty title={t('Товары не найдены', 'Mahsulotlar topilmadi')}>
         <p>{q || min || max ? t('Попробуйте изменить поиск или диапазон цен.', 'Qidiruv yoki narx oralig‘ini o‘zgartirib ko‘ring.')
           : t('Здесь появятся товары после публикации.', 'Nashr qilingan mahsulotlar shu yerda ko‘rinadi.')}</p>
@@ -239,12 +241,15 @@ function CatalogPage({ discount = false }: { discount?: boolean }) {
   </>
 }
 
-export function Pager({ page, next, change }: { page: number; next: boolean; change: (page: number) => void }) {
+export function Pager({ page, next, change, total }: { page: number; next: boolean; change: (page: number) => void; total?: number }) {
   const { t } = useLocale()
-  if (!page && !next) return null
+  const changeRef=useRef(change)
+  changeRef.current=change
+  useEffect(()=>{ if(total!==undefined && page>0 && page>=Math.max(1,Math.ceil(total/10))) changeRef.current(Math.max(0,Math.ceil(total/10)-1)) },[total,page])
+  if (total === 0) return null
   return <nav className="pager" aria-label={t('Страницы', 'Sahifalar')}>
     <button className="button" disabled={!page} onClick={() => change(page - 1)}>{t('Назад', 'Orqaga')}</button>
-    <span>{page + 1}</span>
+    <span>{page + 1}{total!==undefined && <> / {Math.ceil(total/10)}<small className="page-range">{page*10+1}–{Math.min((page+1)*10,total)} {t('из','/')} {total}</small></>}</span>
     <button className="button" disabled={!next} onClick={() => change(page + 1)}>{t('Дальше', 'Keyingi')}</button>
   </nav>
 }
@@ -274,7 +279,7 @@ function ProductCard({ item }: { item: Card }) {
     <div className="card-body">
       <p className="kicker">{item.brand}</p>
       <h3><Link to={productUrl} state={{ back }}>{item.name}</Link></h3>
-      {(item.storageGb || item.color) && <p className="muted card-variant">{[item.storageGb && item.storageGb + ' GB', item.color].filter(Boolean).join(' · ')}</p>}
+      {(item.storageGb || item.color) && <p className="muted card-variant">{[item.storageGb && t('Память: ','Xotira: ') + item.storageGb + t(' ГБ',' GB'), item.color && t('Цвет: ','Rang: ')+item.color].filter(Boolean).join(' · ')}</p>}
       <div className="card-price"><strong>{item.variantCount > 1 && !item.originalPrice ? t('от ', 'dan ') : ''}{money(item.price, lang)}</strong>
         {item.originalPrice && <del>{money(item.originalPrice, lang)}</del>}</div>
       {item.installment && <span className="badge">{t('Рассрочка', 'Bo‘lib to‘lash')}</span>}
@@ -312,13 +317,7 @@ function ProductPage() {
   const visible = gallery.length ? gallery : images
   const photo = visible.find(i => i.id === selectedPhoto) ?? visible[0]
   const back = typeof state?.back === 'string' && /^\/(?:$|\?|catalog\/|discounts|favorites)/.test(state.back) ? state.back : '/'
-  const specs: [string, ReactNode][] = [
-    [t('Цвет', 'Rang'), selected.color], ['RAM', selected.ramGb && selected.ramGb + ' GB'],
-    [t('Память', 'Xotira'), selected.storageGb && selected.storageGb + ' GB'], [t('Экран', 'Ekran'), selected.screen],
-    [t('Процессор', 'Protsessor'), selected.cpu], ['GPU', selected.gpu], [t('Камеры', 'Kameralar'), selected.cameras],
-    [t('Аккумулятор', 'Batareya'), selected.battery], ['SIM / eSIM', selected.sim], [t('ОС', 'OT'), selected.os],
-    [t('Вес', 'Vazn'), selected.weight], [t('Дополнительно', 'Qo‘shimcha'), selected.notes],
-  ].filter(entry => entry[1]) as [string, ReactNode][]
+  const specs = specifications(selected,detail.kind,t)
   return <div className="product-page">
     <Link className="back" to={back}><Icon name="back"/> {t('Назад в каталог', 'Katalogga qaytish')}</Link>
     <div className="detail-grid">
@@ -333,10 +332,10 @@ function ProductPage() {
         <div className="section-head"><div><p className="kicker">{product.brand}</p><h1>{product.name}</h1></div><FavoriteButton id={product.id}/></div>
         <label className="field">{t('Комплектация', 'Variant')}
           <select value={selected.id} onChange={e => { setSelectedPhoto(undefined); setParams({ variant: e.target.value }, { replace: true, state }) }}>
-            {variants.map(v => <option value={v.id} key={v.id}>{label(v)}</option>)}
+            {variants.map(v => <option value={v.id} key={v.id}>{variantLabel(v,detail.kind,t)}</option>)}
           </select>
         </label>
-        <p className="muted sku">SKU <strong>{selected.sku}</strong></p>
+        <p className="muted sku">{t('Артикул','Artikul')} <strong>{selected.sku}</strong></p>
         <div className="detail-price"><strong>{money(selected.price, lang)}</strong>
           {selected.originalPrice && <del>{money(selected.originalPrice, lang)}</del>}</div>
         <div className="badges"><span className={'badge ' + (selected.stock === 'OUT_OF_STOCK' ? 'quiet' : '')}>{statusName(selected.stock, t)}</span>
@@ -344,7 +343,7 @@ function ProductPage() {
         {selected.installmentTerms && <p className="copy muted">{selected.installmentTerms}</p>}
         {product.description && <p className="copy">{product.description}</p>}
         {specs.length > 0 && <dl className="specs">{specs.map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl>}
-        {selected.stock === 'IN_STOCK' ? <LeadForm variant={selected} onPriceChanged={(price, originalPrice) =>
+        {selected.stock === 'IN_STOCK' ? <LeadForm kind={detail.kind} variant={selected} onPriceChanged={(price, originalPrice) =>
           setDetail(previous => previous && { ...previous, variants: previous.variants.map(v =>
             v.id === selected.id ? { ...v, price, originalPrice } : v) })}/> :
           <p className="muted">{t('Заявка появится, когда комплектация будет в наличии.', 'Variant mavjud bo‘lganda ariza qoldirish mumkin.')}</p>}
@@ -354,7 +353,7 @@ function ProductPage() {
   </div>
 }
 
-function LeadForm({ variant, onPriceChanged }: { variant: Variant; onPriceChanged: (price: number, originalPrice: number | null) => void }) {
+function LeadForm({ variant, onPriceChanged, kind }: { kind: string; variant: Variant; onPriceChanged: (price: number, originalPrice: number | null) => void }) {
   const { t, lang } = useLocale()
   const { settings } = useContext(Shop)
   const [open, setOpen] = useState(false)
@@ -391,7 +390,7 @@ function LeadForm({ variant, onPriceChanged }: { variant: Variant; onPriceChange
   if (!open) return <button className="button primary lead-button" onClick={() => setOpen(true)}>{t('Оставить заявку', 'Ariza qoldirish')} <Icon name="arrow"/></button>
   return <form className="lead-form panel" onSubmit={submit}>
     <h2>{t('Оставить заявку', 'Ariza qoldirish')}</h2>
-    <p className="muted">{label(variant)} · {money(price, lang)}</p>
+    <p className="muted">{variantLabel(variant,kind,t)} · {money(price, lang)}</p>
     {Boolean(error) && <ErrorText error={error}/>}
     <label className="field">{t('Ваше имя', 'Ismingiz')}<input name="name" autoComplete="name" value={name} required minLength={2} maxLength={80}
       onChange={e => setName(e.target.value)}/></label>
@@ -410,6 +409,9 @@ function Favorites() {
   const { t } = useLocale()
   const [result, setResult] = useState<Result<Card>>()
   const [error, setError] = useState<unknown>()
+  const [params,setParams]=useSearchParams()
+  const page=Math.max(0,Number(params.get('page')??0)||0)
+  const change=(n:number)=>setParams({page:String(n)})
   const ids = favorites.join(',')
   useEffect(() => {
     setResult(undefined); setError(undefined)
@@ -426,14 +428,14 @@ function Favorites() {
     {!ids ? <Empty title={t('В избранном пока пусто', 'Saralanganlar hozircha bo‘sh')}>
       <p>{t('Нажмите на сердце в карточке, чтобы сохранить модель.', 'Modelni saqlash uchun yurakchani bosing.')}</p>
       <Link className="button primary" to="/">{t('Открыть каталог', 'Katalogni ochish')}</Link>
-    </Empty> : error ? <ErrorText error={error}/> : result ? <div className="grid">
-      {favorites.map(id => {
+    </Empty> : error ? <ErrorText error={error}/> : result ? <><div className="grid">
+      {favorites.slice(page*10,(page+1)*10).map(id => {
         const item = result.items.find(it => it.id === id)
         return item ? <ProductCard key={id} item={item}/> : <article className="panel" key={id}>
           <p>{t('Товар недоступен', 'Mahsulot mavjud emas')}</p><button className="button" onClick={() => toggle(id)}>{t('Удалить', 'Olib tashlash')}</button>
         </article>
       })}
-    </div> : <Loading/>}
+    </div><Pager page={page} next={(page+1)*10<favorites.length} total={favorites.length} change={change}/></> : <Loading/>}
   </section>
 }
 
