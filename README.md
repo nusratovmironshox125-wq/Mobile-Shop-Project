@@ -90,7 +90,7 @@ $env:RMS_BROWSER_EXE = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge
 
 - [ТЗ 1.3](docs/MASTER_TZ.md), [решения](docs/DECISIONS.md), [архитектура и ERD](docs/ARCHITECTURE.md), [OpenAPI](docs/openapi.yaml).
 - [Управление магазином](docs/ADMIN_GUIDE.md), [выпуск](docs/DEPLOYMENT.md), [эксплуатация](docs/RUNBOOK.md).
-- Точный URL GitHub пока не подтверждён. Инвентаризация и условия подключения записаны в [STATUS](docs/STATUS.md).
+- [Репозиторий GitHub](https://github.com/nusratovmironshox125-wq/Mobile-Shop-Project), ветка codex/real-mobil-shop. Состояние проверок — [STATUS](docs/STATUS.md).
 
 ## Запуск после исправлений 11 ноября
 
