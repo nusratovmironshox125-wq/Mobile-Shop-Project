@@ -24,9 +24,14 @@ public final class CatalogMapper {
     }
 
     public static VariantView variantView(Variant v, boolean active, boolean admin) {
-        return new VariantView(v.getId(), v.getSku(), v.getColor(), v.getRamGb(), v.getStorageGb(), v.getScreen(), v.getCpu(), v.getGpu(), v.getCameras(),
-            v.getBattery(), v.getSim(), v.getOs(), v.getWeight(), v.getNotes(), active ? v.getSalePrice() : v.getPrice(), active ? v.getPrice() : null,
+        return variantView(v,active,admin,null);
+    }
+
+    public static VariantView variantView(Variant v, boolean active, boolean admin, String kind) {
+        boolean phone=admin || "PHONE".equals(kind), laptop=admin || "LAPTOP".equals(kind);
+        return new VariantView(v.getId(), v.getSku(), v.getColor(), v.getRamGb(), v.getStorageGb(), v.getScreen(), v.getCpu(), laptop ? v.getGpu() : null, phone ? v.getCameras() : null,
+            phone ? v.getBattery() : null, phone ? v.getSim() : null, v.getOs(), laptop ? v.getWeight() : null, v.getNotes(), active ? v.getSalePrice() : v.getPrice(), active ? v.getPrice() : null,
             v.getStock(), v.isInstallment(), v.getInstallmentTerms(), v.getVersion(), admin ? v.getSalePrice() : null,
-            admin ? v.getSaleFrom() : null, admin ? v.getSaleUntil() : null, v.getStorageType(), v.isSpecsReviewRequired());
+            admin ? v.getSaleFrom() : null, admin ? v.getSaleUntil() : null, laptop ? v.getStorageType() : null, admin && v.isSpecsReviewRequired());
     }
 }

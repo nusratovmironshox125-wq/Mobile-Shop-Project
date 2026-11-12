@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Transactional
 class FixRegressionTests {
     @Autowired JdbcClient db;
+    @Autowired jakarta.persistence.EntityManager entityManager;
     @Autowired CatalogService catalog;
     @Autowired ProductService products;
     @Autowired LeadService leads;
@@ -69,6 +70,12 @@ class FixRegressionTests {
             .params(id,UUID.randomUUID().toString()).update();
         assertEquals(21,catalog.list(null,tag,null,null,false,"new",0,10,null).totalElements());
         assertEquals(0,catalog.list(null,"' OR 1=1 --",null,null,false,"new",0,10,null).totalElements());
+        long last=catalog.list(null,tag,null,null,false,"new",2,10,null).items().getFirst().id();
+        db.sql("update product set status='ARCHIVED' where id=?").param(last).update();
+        var afterArchive=catalog.list(null,tag,null,null,false,"new",2,10,null);
+        assertEquals(20,afterArchive.totalElements());
+        assertEquals(2,afterArchive.totalPages());
+        assertTrue(afterArchive.items().isEmpty());
     }
     @Test void categoryRulesApplyToDirectDtoAndPreventChangingTechnicalType() {
         long owner=actor("OWNER");
@@ -122,6 +129,26 @@ class FixRegressionTests {
         assertEquals(before,reads.updates(b).unreadCount());
         assertEquals("NEW",leads.detail(lead).lead().status());
         assertNotNull(leads.list(null,null,null,null,0,a).items().stream().filter(l->l.id()==lead).findFirst().orElseThrow().readAt());
+    }
+    @Test void priceCountUsesTheSameAvailableVariantAndLegacySpecsNeedConfirmation() {
+        long owner=actor("OWNER");
+        long product=product("PHONE","Price boundary");
+        var detail=catalog.adminDetail(product);
+        var variant=detail.variants().getFirst();
+        db.sql("update product_variant set price=1000000,gpu='Legacy GPU',specs_review_required=true where id=?").param(variant.id()).update();
+        db.sql("insert into product_variant(product_id,sku,stock,price) values (?,?,'OUT_OF_STOCK',2500000)")
+            .params(product,"OUT-"+UUID.randomUUID()).update();
+        var list=catalog.list(null,"Price boundary",new BigDecimal("2000000"),new BigDecimal("3000000"),false,"new",0,10,null);
+        assertEquals(0,list.totalElements());
+        assertTrue(list.items().isEmpty());
+        entityManager.clear();
+        assertNull(catalog.detail(detail.product().slug()).variants().getFirst().gpu());
+        assertEquals("Legacy GPU",catalog.adminDetail(product).variants().getFirst().gpu());
+        assertThrows(Problem.class,()->products.saveVariant(product,variant.id(),input(variant.sku(),",\"version\":"+variant.version()),owner));
+        var fixed=products.saveVariant(product,variant.id(),input(variant.sku(),",\"version\":"+variant.version()+",\"confirmSpecCleanup\":true"),owner);
+        assertNull(fixed.gpu());
+        assertFalse(fixed.specsReviewRequired());
+        assertTrue(audit.list(0,null,"VARIANT_SAVED","variant:"+variant.id(),null,null).items().getFirst().get("changes").toString().contains("Legacy GPU"));
     }
     @Test void rollbackDoesNotLeaveSuccessfulAudit() {
         String label="rollback-"+UUID.randomUUID();

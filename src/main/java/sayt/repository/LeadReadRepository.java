@@ -11,8 +11,8 @@ public class LeadReadRepository {
 
     public LeadUpdates updates(long admin) {
         var counts = db.sql("""
-            select count(*) filter(where r.lead_id is null) unread,coalesce(max(l.id),0) latest
-            from lead l left join lead_read r on r.lead_id=l.id and r.admin_id=?
+            select (select count(*) from lead) - (select count(*) from lead_read where admin_id=?) unread,
+                coalesce((select max(id) from lead),0) latest
             """).param(admin).query((rs,n) -> new long[]{rs.getLong(1), rs.getLong(2)}).single();
         var recent = db.sql("""
             select l.id,l.public_number,l.product_name from lead l

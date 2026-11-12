@@ -64,7 +64,11 @@ public class CatalogQueryRepository {
                 ids != null ? "and p.id in (:ids)" : "", hasPriceFilter ? "and stock='IN_STOCK'" : "",
                 min != null ? "and price >= :min" : "", max != null ? "and price <= :max" : "",
                 discounted ? "and price < base_price" : "", order);
-        String countSql = sql.substring(0,sql.indexOf("select matches.*")) + "select count(*) from matches where position=1";
+        String countSql = sql.substring(0,sql.indexOf(", matches as ("))
+            + " select count(distinct id) from priced where true "
+            + (hasPriceFilter ? "and stock='IN_STOCK' " : "")
+            + (min != null ? "and price>=:min " : "") + (max != null ? "and price<=:max " : "")
+            + (discounted ? "and price<base_price " : "");
         var args = new HashMap<String,Object>();
         args.put("now",now);
         if(category != null) args.put("category",category);

@@ -71,8 +71,9 @@ public class CatalogService {
 
     private Detail detail(Product p, boolean admin) {
         var now = clock.instant();
+        String kind=categories.findById(p.getCategoryId()).orElseThrow().getKind();
         return new Detail(CatalogMapper.productView(p), variants.findByProductIdOrderById(p.getId()).stream()
-            .map(v -> CatalogMapper.variantView(v, PricingService.activeSale(v, now), admin)).toList(),
-            images.findByProductIdOrderById(p.getId()).stream().map(CatalogMapper::imageView).toList(), categories.findById(p.getCategoryId()).orElseThrow().getKind());
+            .map(v -> CatalogMapper.variantView(v, PricingService.activeSale(v, now), admin, kind)).toList(),
+            images.findByProductIdOrderById(p.getId()).stream().map(CatalogMapper::imageView).toList(), kind);
     }
 }
