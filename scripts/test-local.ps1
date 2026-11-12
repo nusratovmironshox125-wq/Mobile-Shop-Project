@@ -1,4 +1,4 @@
-param([string]$PostgresBin = 'C:\Program Files\PostgreSQL\18\bin')
+param([string]$PostgresBin = 'C:\Program Files\PostgreSQL\18\bin', [string]$BackupFile, [switch]$ReuseBuild, [switch]$LoadSmoke)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath (Split-Path -Parent $PSScriptRoot)
 if (-not (Test-Path -LiteralPath (Join-Path $PostgresBin 'initdb.exe'))) { throw 'Specify -PostgresBin' }
@@ -43,11 +43,14 @@ try {
     $env:SHOP_ORIGIN = 'http://127.0.0.1:18080'
     $env:APP_SECURE_COOKIE = 'false'
     $env:MEDIA_DIR = Join-Path $testRoot 'media'
-    & (Join-Path $PSScriptRoot 'build.ps1')
-    .\mvnw.cmd -B test
-    if ($LASTEXITCODE) { throw 'Maven tests failed' }
+    if (-not $ReuseBuild) {
+        & (Join-Path $PSScriptRoot 'build.ps1')
+        .\mvnw.cmd -B test
+        if ($LASTEXITCODE) { throw 'Maven tests failed' }
+    } else { Write-Host 'Reusing verified JAR: build and JUnit are NOT RUN in this invocation' }
     $java = Join-Path $env:JAVA_HOME 'bin\java.exe'
     $jar = 'target/Real_Mobil_Shop_Sayt-0.0.1-SNAPSHOT.jar'
+    if ($BackupFile) { & (Join-Path $PSScriptRoot 'check-backup.ps1') -BackupFile $BackupFile -PostgresBin $PostgresBin }
     $inspectionLog = Join-Path $testRoot 'db-inspect.log'
     $probe = Start-Process -FilePath $java -ArgumentList @('-jar',$jar,'inspect-database') -PassThru -Wait -WindowStyle Hidden `
         -RedirectStandardOutput $inspectionLog -RedirectStandardError (Join-Path $testRoot 'db-inspect-error.log')
@@ -72,6 +75,7 @@ try {
     if (-not $ready) { throw 'Application readiness timeout' }
     node.exe scripts/check-api.mjs
     if ($LASTEXITCODE) { throw 'HTTP checks failed' }
+    if ($LoadSmoke) { & (Join-Path $PSScriptRoot 'check-load-smoke.ps1') -PostgresBin $PostgresBin }
     if ($env:RMS_PLAYWRIGHT_DIR -and $env:RMS_BROWSER_EXE) {
         node.exe scripts/check-browser.mjs
         if ($LASTEXITCODE) { throw 'Browser checks failed' }

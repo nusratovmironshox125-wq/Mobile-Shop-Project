@@ -36,3 +36,8 @@ frontend/node_modules/
 frontend/dist/
 var/
 .env
+
+# Private load fixtures and generated measurements
+load-results*
+*.load-credentials.json
+*.dump

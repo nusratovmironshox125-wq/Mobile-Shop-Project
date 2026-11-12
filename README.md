@@ -48,10 +48,9 @@ Spring читает окружение процесса. Шаблон `.env.exam
 
 ## Проверка рабочей базы владельцем (AT-26)
 
-В IntelliJ выберите конфигурацию **Real Mobil Shop (local)**. Она включает профиль `local`. Для пароля создайте личную копию конфигурации без опции **Store as project file** и задайте `DB_PASSWORD` в **Environment variables**. Для PowerShell используйте окружение текущего процесса. Профиль задаёт `jdbc:postgresql://localhost:5432/real_mobil_shop_sayt?currentSchema=public` и пользователя `postgres`.
+Используйте уже работающую личную конфигурацию IntelliJ. Исправленные владельцем параметры сохранены. 11 ноября JPA подтвердил рабочую БД, Flyway V2 применена после backup и проверки восстановленной копии; исходные поля товаров/вариантов/заявок сохранились. Не заменяйте локальные настройки примерами из ранней инструкции. В чистой копии репозитория секреты задаются через окружение, в общую .run-конфигурацию пароль не добавляется.
 
 ```powershell
-$env:DB_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host 'Пароль PostgreSQL' -AsSecureString)).Password
 $java = Join-Path $env:JAVA_HOME 'bin\java.exe'
 $jar = 'target/Real_Mobil_Shop_Sayt-0.0.1-SNAPSHOT.jar'
 & $java -jar $jar inspect-database
@@ -61,14 +60,14 @@ $jar = 'target/Real_Mobil_Shop_Sayt-0.0.1-SNAPSHOT.jar'
 
 Перед включением миграций сверьте существующую схему с Flyway и подготовьте резервную копию согласно [инструкции выпуска](docs/DEPLOYMENT.md). По умолчанию в `local` Flyway выключен, а Hibernate проверяет схему. Включить Flyway после согласования миграции можно через `LOCAL_FLYWAY_ENABLED=true`. Если в подготовленной базе ещё нет OWNER, выполните bootstrap из инструкции выше с `SPRING_PROFILES_ACTIVE=local` в окружении. Для обычного запуска подготовленной схемы выполните `& $java -jar $jar --spring.profiles.active=local`.
 
-В подготовленной схеме откройте панель и создайте один черновик с уникальным slug, например `at26-test-20261108`. В окне Database IntelliJ выберите соединение с этой базой и выполните:
+В подготовленной схеме владелец может создать один черновик с уникальным названием модели, например AT26-check. Ссылка создаётся автоматически. В окне Database IntelliJ выберите соединение с этой базой и выполните:
 
 ```sql
 SELECT current_database(), current_schema(), current_user;
-SELECT id, slug, status FROM public.product WHERE slug = 'at26-test-20261108';
+SELECT id, slug, status FROM public.product WHERE name = 'AT26-check';
 ```
 
-Ожидается одна запись со статусом `DRAFT`. Затем архивируйте черновик через панель и повторите SELECT. Ожидаемый статус `ARCHIVED`. Если в панели уже есть такой slug, выберите другой и подставьте его в запрос. Для итоговой записи AT-26 достаточно профиля, результата диагностики и ID черновика. Пароль в отчёт не включайте.
+Ожидается одна запись со статусом `DRAFT`. Затем архивируйте черновик через панель и повторите SELECT. Ожидаемый статус `ARCHIVED`. Если такое название уже есть, выберите другое и подставьте его в запрос. Для итоговой записи AT-26 достаточно профиля, результата диагностики и ID черновика. Пароль в отчёт не включайте.
 ## Проверка
 
 ```powershell
@@ -89,6 +88,24 @@ $env:RMS_BROWSER_EXE = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge
 
 ## Исходный код и эксплуатация
 
-- [ТЗ 1.2](docs/MASTER_TZ.md), [решения](docs/DECISIONS.md), [архитектура и ERD](docs/ARCHITECTURE.md), [OpenAPI](docs/openapi.yaml).
+- [ТЗ 1.3](docs/MASTER_TZ.md), [решения](docs/DECISIONS.md), [архитектура и ERD](docs/ARCHITECTURE.md), [OpenAPI](docs/openapi.yaml).
 - [Управление магазином](docs/ADMIN_GUIDE.md), [выпуск](docs/DEPLOYMENT.md), [эксплуатация](docs/RUNBOOK.md).
 - Точный URL GitHub пока не подтверждён. Инвентаризация и условия подключения записаны в [STATUS](docs/STATUS.md).
+
+## Запуск после исправлений 11 ноября
+
+В этом рабочем каталоге миграция V2 уже применена и существующие данные сохранены. Для обычного запуска используйте личную конфигурацию IntelliJ или команды:
+
+    $env:JAVA_HOME = "C:\Users\user\.jdks\ms-21.0.12.1"
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1
+    & "$env:JAVA_HOME\bin\java.exe" -jar target/Real_Mobil_Shop_Sayt-0.0.1-SNAPSHOT.jar --spring.profiles.active=local
+
+Панель — http://localhost:8080/admin/login. Если порт уже занят запущенным экземпляром, используйте его или перезапустите через ту же конфигурацию IntelliJ.
+
+При переносе на другую базу сначала выполните [проверку миграции и backup](docs/FIX_OPERATIONS.md). Release JAR собирайте из чистого checkout с переменными окружения; локальный JAR этого рабочего каталога предназначен для локального запуска с личной конфигурацией.
+
+- [Реестр R-01…R-25](docs/FIX_ACCEPTANCE.md), [план](docs/FIX_PLAN.md), [STATUS](docs/STATUS.md).
+- [Что изменилось для администратора](docs/ADMIN_GUIDE.md), [Telegram и инфраструктура](docs/FIX_OPERATIONS.md).
+- [Нагрузка и ограничения измерений](docs/PERFORMANCE_REPORT.md), [запуск генератора](scripts/load/README.md).
+
+Полный прогон с браузером настраивается переменными RMS_PLAYWRIGHT_DIR/RMS_BROWSER_EXE выше. Флаг -LoadSmoke добавляет короткий тест генератора на отдельной rms_load с 10000 моделей; это не проверка 1000/2000 посетителей. Флаг -BackupFile принимает приватный локальный dump и проверяет его восстановление и миграцию на тестовом порту.

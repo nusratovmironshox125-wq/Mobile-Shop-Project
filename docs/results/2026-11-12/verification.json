@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-12",
+  "javaCommit": "03d99b7",
+  "junit": {
+    "tests": 17,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "httpChecks": 381,
+  "browser": {
+    "version": "157.0.4341.42",
+    "notificationMs": 8363,
+    "result": "PASS"
+  },
+  "loadSmoke": "load-smoke.json",
+  "ownerReadOnly": "local-read-only.json",
+  "fullLoad1000": "BLOCKED",
+  "fullLoad2000": "BLOCKED",
+  "realTelegram": "BLOCKED",
+  "externalEdge": "BLOCKED",
+  "sourceSha256": {
+    "scripts/check-browser.mjs": "ccd55dbff897b5dccefa180c4e546080fbd4cf0ae1b639fba7569bfdc4c5f557",
+    "scripts/load/run.mjs": "0be8305bf7277dc55fc166cf0140634230abb5a3cd3bf8ff0109092fb7ed18b4",
+    "src/test/java/sayt/service/FixRegressionTests.java": "88712a9a0e1af55ebc0e6a7ba18ad1a8e518ab7a957e8bc18cc4d36c86f4b29c"
+  }
+}
